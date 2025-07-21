@@ -1,3 +1,5 @@
+// Sensors: DHt22, DS18B20 (temperatire sensor), BNO055, GNSS
+
 // Libraries
 // I2C communication
 #include <Wire.h>
