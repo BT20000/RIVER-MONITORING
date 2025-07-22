@@ -40,6 +40,9 @@ OneWire oneWireB(DS18B20B_PIN);
 DallasTemperature ds18b20b(&oneWireB);
 #define LED_PIN 2
 
+//Turbidity Sensor
+#define TURBIDITY_ANALOG_PIN 7
+
 // MQTT Configuration
 const char mqttServer[] = "io.adafruit.com";
 const int mqttPort = 1883;
@@ -130,6 +133,8 @@ void setup() {
   }
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
+  //Turbidity sensor initial
+  pinMode(TURBIDITY_ANALOG_PIN, INPUT);
   // Modem init
   modem_init();
   Serial.println("Sensor setup completed....");
@@ -169,20 +174,27 @@ void publishData() {
     return;
   }
 
+  //Temperature
   ds18b20a.requestTemperatures();
   float dsTempA = ds18b20a.getTempCByIndex(0);
   ds18b20b.requestTemperatures();
   float dsTempB = ds18b20b.getTempCByIndex(0);
 
+  //IMU
   sensors_event_t orientationData, accelData, gyroData;
   bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
   bno.getEvent(&accelData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
   bno.getEvent(&gyroData, Adafruit_BNO055::VECTOR_GYROSCOPE);
 
+  //GPS
   String gps_response = sendATCommand("AT+QGPSLOC?", 5000);
   String latitude = "0.0";
   String longitude = "0.0";
   parseGPSResponse(gps_response, latitude, longitude);
+
+  //Turbidity
+  int rawAnalogValue = analogRead(TURBIDITY_ANALOG_PIN);
+  float turbidityNTU = map(rawAnalogValue, 0, 4095, 0, 1000);
 
   //JSON PAYLOAD OUTPUT DATA
   String payload = "{";
@@ -198,6 +210,8 @@ void publishData() {
   payload += "\"ds18b20b_temp\":";
   payload += String(dsTempB, 2);
   payload += ",";
+  payload += "\"turbidity_raw\":" + String(rawAnalogValue) + ",";
+  payload += "\"turbidity_ntu\":" + String(turbidityNTU, 2) + ",";
   payload += "\"orientation2_x\":" + String(orientationData.orientation.x, 2) + ",";
   payload += "\"orientation_y\":" + String(orientationData.orientation.y, 2) + ",";
   payload += "\"orientation_z\":" + String(orientationData.orientation.z, 2) + ",";
